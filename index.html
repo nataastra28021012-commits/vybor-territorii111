@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Выбор территории</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root { --green:#3bb670; --green-dark:#237a49; --text:#24323d; --line:#d8e1e6; }
+    * { box-sizing:border-box; font-family:Inter, Arial, Helvetica, sans-serif; }
+    body { margin:0; padding:32px 20px; background:#fff; color:var(--text); font:18px/1.55 Inter, Arial, Helvetica, sans-serif; }
+    main { max-width:1050px; margin:0 auto; padding:24px; background:#fff; border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px #234a6010; }
+    .territory-accordion { display:grid; gap:12px; }
+    .territory-accordion-item { overflow:hidden; border:1px solid var(--line); border-radius:9px; background:#fff; }
+    .territory-accordion-trigger { width:100%; display:grid; grid-template-columns:42px minmax(0,1fr) 28px; gap:12px; align-items:center; padding:14px 16px; border:0; background:#f7fbf8; color:var(--text); cursor:pointer; text-align:left; font:700 18px/1.4 Inter, Arial, Helvetica, sans-serif; }
+    .territory-accordion-trigger:hover { background:#eef8f1; }
+    .territory-accordion-trigger:focus-visible, .reference-image-trigger:focus-visible, .close:focus-visible { outline:3px solid #ffbc35; outline-offset:3px; }
+    .step-number { display:flex; width:34px; height:34px; align-items:center; justify-content:center; border-radius:50%; background:var(--green); color:#fff; font-size:16px; font-weight:700; }
+    .accordion-chevron { color:var(--green-dark); font-size:24px; line-height:1; text-align:right; transition:transform .2s ease; }
+    .territory-accordion-trigger[aria-expanded="true"] .accordion-chevron { transform:rotate(45deg); }
+    .territory-accordion-content { display:flex; align-items:center; gap:10px; min-height:64px; padding:14px 16px 18px; border-top:1px solid #e4ece7; }
+    /* В закрытом состоянии содержимое не должно переопределяться правилом display:flex. */
+    .territory-accordion-content[hidden] { display:none !important; }
+    .territory-accordion-content p { margin:0; }
+    .reference-image-trigger { display:inline-flex; flex:0 0 auto; width:24px; height:24px; padding:0; align-items:center; justify-content:center; border:0; border-radius:50%; background:var(--green); color:#fff; cursor:pointer; font:700 17px/1 Arial, Helvetica, sans-serif; }
+    .reference-image-trigger:hover { background:var(--green-dark); }
+    .reference-image-trigger:active { transform:scale(.94); }
+    .hidden { display:none !important; }
+    .modal-backdrop { position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px; background:#1528338a; }
+    .modal { position:relative; width:min(820px, 100%); max-height:85vh; overflow:auto; padding:20px 22px; border-radius:8px; background:#fff; box-shadow:0 12px 35px #0006; }
+    .modal h2 { margin:0 40px 18px 0; font-size:20px; }
+    /* Кнопка закрытия в стиле референса: светлый круг с компактным крестиком. */
+    .close { position:absolute; top:16px; right:16px; display:flex; width:32px; height:32px; padding:0; align-items:center; justify-content:center; border:0; border-radius:50%; background:#edf2f6; color:#4d5f6c; cursor:pointer; font:600 24px/1 Inter, Arial, Helvetica, sans-serif; }
+    .close:hover { background:#e1e9ef; }
+    .close:active { transform:scale(.95); }
+    .reference-modal-image { display:block; width:auto; max-width:100%; max-height:62vh; margin:0 auto; object-fit:contain; border:1px solid var(--line); border-radius:5px; cursor:zoom-in; }
+    /* Явно скрываем изображение в текстовых плашках: класс display:block не должен переопределять hidden. */
+    .reference-modal-image[hidden] { display:none !important; }
+    .reference-modal-text[hidden] { display:none !important; }
+    .reference-modal-fallback[hidden] { display:none !important; }
+    .modal.image-zoomed { width:min(1400px, 96vw); max-height:96vh; }
+    .modal.image-zoomed .reference-modal-image { max-height:84vh; cursor:zoom-out; }
+    .reference-modal-fallback { margin:8px 0 0; color:#687984; font-size:16px; text-align:center; }
+    .reference-modal-text { margin:0; font-size:18px; line-height:1.55; white-space:pre-line; } 
+    .modal h2[hidden] { display:none; } 
+    .modal h2[hidden] + .reference-modal-image { margin-top:0; } 
+    .modal h2[hidden] + .reference-modal-text { margin-top:0; } 
+    .territory-list-instruction, .territory-map-instruction { display:block; width:100%; }
+    .territory-list-instruction > p, .territory-map-instruction > p { margin:0 0 16px; }
+    .territory-map-image-trigger { display:block; width:min(808px, 100%); padding:0; border:0; border-radius:5px; background:transparent; cursor:zoom-in; }
+    .territory-map-image-trigger:focus-visible { outline:3px solid #ffbc35; outline-offset:3px; }
+    .territory-map-image { display:block; width:100%; max-height:58vh; object-fit:contain; border:1px solid var(--line); border-radius:5px; background:#f7fbf8; }
+    .map-info-row { display:flex; align-items:flex-start; gap:10px; margin-top:18px; }
+    .map-info-row p { margin:0; }
+    .territory-map-fallback { margin:12px 0 0; color:#687984; font-size:16px; }
+    /* Кнопки находятся в отдельной колонке справа и выровнены по зелёным выделениям на изображении. */
+    .territory-list-figure { position:relative; width:min(808px, 100%); margin:0; padding-right:48px; }
+    .territory-list-image { display:block; width:100%; min-height:220px; object-fit:contain; border:1px solid var(--line); border-radius:5px; background:#f7fbf8; }
+    .territory-list-fallback { margin:12px 0 0; color:#687984; font-size:16px; }
+    .image-info-trigger { position:absolute; z-index:2; right:8px; display:flex; width:28px; height:28px; padding:0; align-items:center; justify-content:center; border:0; border-radius:50%; background:var(--green); color:#fff; box-shadow:0 1px 4px #1d51374d; cursor:pointer; font:700 17px/1 Inter, Arial, Helvetica, sans-serif; transform:translateY(-50%); }
+    .image-info-trigger:hover { background:var(--green-dark); }
+    .image-info-trigger:focus-visible { outline:3px solid #ffbc35; outline-offset:3px; }
+    .list-info-1 { top:11%; }
+    .list-info-2 { top:47%; }
+    .list-info-3 { top:57%; }
+    .list-info-4 { top:83%; }
+    @media (max-width:700px) { body { padding:16px 12px; } main { padding:16px; } .territory-accordion-trigger { grid-template-columns:38px minmax(0,1fr) 22px; padding:12px; font-size:16px; } .territory-accordion-content { padding:12px; } .modal { padding:18px; } .image-info-trigger { width:24px; height:24px; font-size:16px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="territory-accordion" id="territoryAccordion">
+      <section class="territory-accordion-item">
+        <button class="territory-accordion-trigger" type="button" aria-expanded="false" aria-controls="territoryList">
+          <span class="step-number">1</span>
+          <span>Выбор территории из списка</span>
+          <span class="accordion-chevron" aria-hidden="true">+</span>
+        </button>
+        <div class="territory-accordion-content" id="territoryList" hidden>
+          <div class="territory-list-instruction">
+            <p>Чтобы включить территорию в план, выбрав её из списка,<br>нажми на кнопку со звёздочкой рядом с нужной территорией.</p>
+            <figure class="territory-list-figure">
+              <img class="territory-list-image" id="territoryListImage" data-image-base="Постановка территории из списка" alt="Постановка территории из списка" hidden>
+              <button class="image-info-trigger list-info-1" type="button" data-reference-title="Дополнительная информация" data-reference-text="Нажми сюда, чтобы добавить территорию в план." aria-label="Дополнительная информация: добавить территорию в план" title="Дополнительная информация"><span aria-hidden="true">i</span></button>
+              <button class="image-info-trigger list-info-2" type="button" data-reference-title="Дополнительная информация" data-reference-text="Если кнопка синяя, территория уже в плане." aria-label="Дополнительная информация: территория уже в плане" title="Дополнительная информация"><span aria-hidden="true">i</span></button>
+              <button class="image-info-trigger list-info-3" type="button" data-reference-title="Дополнительная информация" data-reference-text="«Огонёк» отображается рядом с территорией, которая была вне плана, а теперь закрыта. Нажатием на «огонёк» ты можешь сделать территорию снова открытой&#10;и взять её на выверку." aria-label="Дополнительная информация: огонёк" title="Дополнительная информация"><span aria-hidden="true">i</span></button>
+              <button class="image-info-trigger list-info-4" type="button" data-reference-title="Дополнительная информация" data-reference-text="Знак «+» отображается рядом с&nbsp; территорией, которая была в плане, а теперь&#10;закрыта. Нажатием на «+» ты можешь сделать территорию снова открытой&#10;и взять её на выверку." aria-label="Дополнительная информация: знак плюс" title="Дополнительная информация"><span aria-hidden="true">i</span></button>
+            </figure>
+            <p class="territory-list-fallback hidden" id="territoryListFallback">Положи изображение «Постановка территории из списка» рядом с HTML-файлом.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="territory-accordion-item">
+        <button class="territory-accordion-trigger" type="button" aria-expanded="false" aria-controls="territoryMap">
+          <span class="step-number">2</span>
+          <span>Выбор территории на карте</span>
+          <span class="accordion-chevron" aria-hidden="true">+</span>
+        </button>
+        <div class="territory-accordion-content" id="territoryMap" hidden>
+          <div class="territory-map-instruction">
+            <p>Чтобы включить территорию в план, выбрав её на карте,<br>прокликай на карте все нужные территории и нажми на кнопку «В план».</p>
+            <button class="territory-map-image-trigger" id="territoryMapImageTrigger" type="button" aria-label="Увеличить изображение «Постановка территории на карте»">
+              <img class="territory-map-image" id="territoryMapImage" data-image-base="Постановка территории на карте" alt="Постановка территории на карте" hidden>
+            </button>
+            <p class="territory-map-fallback hidden" id="territoryMapFallback">Положи изображение «Постановка территории на карте» рядом с HTML-файлом.</p>
+            <div class="map-info-row">
+              <p>На этой вкладке также можно назначить территории на месяц. Для этого нужно выбрать территории кликом на карте или поставить галочки напротив них в списке и нажать «Назначить на месяц».<br>В выпадающем списке ты увидишь месяцы текущего цикла. Выбери нужный. <button class="reference-image-trigger" type="button" data-reference-image="Постановка территории на карте2" data-reference-title="" aria-label="Открыть дополнительную информацию о назначении территорий на месяц" title="Дополнительная информация"><span aria-hidden="true">i</span></button></p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="modal-backdrop hidden" id="referenceImageModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="referenceImageTitle">
+      <button class="close" type="button" aria-label="Закрыть">×</button>
+      <h2 id="referenceImageTitle">Дополнительная информация</h2>
+      <img class="reference-modal-image" id="referenceModalImage" alt="">
+      <p class="reference-modal-text hidden" id="referenceModalText"></p>
+      <p class="reference-modal-fallback hidden" id="referenceModalFallback"></p>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+      const modal = document.getElementById('referenceImageModal');
+      const modalImage = document.getElementById('referenceModalImage');
+      const modalTitle = document.getElementById('referenceImageTitle');
+      const modalFallback = document.getElementById('referenceModalFallback');
+      const modalText = document.getElementById('referenceModalText');
+      const closeButton = modal.querySelector('.close');
+      const accordionTriggers = [...document.querySelectorAll('.territory-accordion-trigger')];
+      let lastFocus = null;
+      let imageRequestId = 0;
+
+      function toggleAccordion(trigger) {
+        const content = document.getElementById(trigger.getAttribute('aria-controls'));
+        if (!content) return;
+        const opening = content.hidden;
+        accordionTriggers.forEach((otherTrigger) => {
+          const otherContent = document.getElementById(otherTrigger.getAttribute('aria-controls'));
+          if (otherContent) otherContent.hidden = true;
+          otherTrigger.setAttribute('aria-expanded', 'false');
+        });
+        if (opening) {
+          content.hidden = false;
+          trigger.setAttribute('aria-expanded', 'true');
+          if (content.id === 'territoryList') loadTerritoryListImage();
+          if (content.id === 'territoryMap') loadTerritoryMapImage();
+        }
+      }
+
+      accordionTriggers.forEach((trigger) => {
+        trigger.addEventListener('pointerdown', (event) => {
+          if (event.button !== 0) return;
+          toggleAccordion(trigger);
+        });
+        trigger.addEventListener('click', (event) => {
+          if (event.detail === 0) toggleAccordion(trigger);
+        });
+      });
+
+      function closeModal() {
+        imageRequestId += 1;
+        modal.classList.add('hidden');
+        modal.querySelector('.modal').classList.remove('image-zoomed');
+        modalImage.hidden = true;
+        modalImage.removeAttribute('src');
+        modalText.hidden = true;
+        modalText.classList.add('hidden');
+        modalText.textContent = '';
+        modalFallback.hidden = true;
+        modalFallback.classList.add('hidden');
+        if (lastFocus) lastFocus.focus();
+      }
+
+      function openReferenceImage(baseName, title, opener) {
+        const variants = [baseName, `${baseName}.png`, `${baseName}.jpg`, `${baseName}.jpeg`, `${baseName}.webp`];
+        const requestId = ++imageRequestId;
+        let index = 0;
+        lastFocus = opener;
+        modalTitle.textContent = title || '';
+        modalTitle.hidden = !title;
+        modal.querySelector('.modal').classList.remove('image-zoomed');
+        modalImage.alt = title;
+        modalImage.hidden = true;
+        modalImage.removeAttribute('src');
+        modalText.hidden = true;
+        modalText.classList.add('hidden');
+        modalText.textContent = '';
+        modalFallback.hidden = true;
+        modalFallback.classList.add('hidden');
+        modal.classList.remove('hidden');
+        closeButton.focus();
+
+        function loadNextVariant() {
+          if (requestId !== imageRequestId) return;
+          if (index >= variants.length) {
+            modalFallback.textContent = `Положи изображение «${baseName}» рядом с HTML-файлом.`;
+            modalFallback.hidden = false;
+            modalFallback.classList.remove('hidden');
+            return;
+          }
+          const preloadedImage = new Image();
+          const source = variants[index];
+          preloadedImage.onload = () => {
+            if (requestId !== imageRequestId) return;
+            modalImage.src = source;
+            modalImage.hidden = false;
+          };
+          preloadedImage.onerror = () => {
+            if (requestId !== imageRequestId) return;
+            index += 1;
+            loadNextVariant();
+          };
+          preloadedImage.src = source;
+        }
+        loadNextVariant();
+      }
+
+      function openReferenceText(title, text, opener) {
+        imageRequestId += 1;
+        lastFocus = opener;
+        modalTitle.textContent = title;
+        modalTitle.hidden = true;
+        modal.querySelector('.modal').classList.remove('image-zoomed');
+        modalImage.hidden = true;
+        modalImage.removeAttribute('src');
+        modalFallback.hidden = true;
+        modalFallback.classList.add('hidden');
+        modalText.textContent = text;
+        modalText.hidden = false;
+        modalText.classList.remove('hidden');
+        modal.classList.remove('hidden');
+        closeButton.focus();
+      }
+
+      function loadLocalImage(image, fallback, baseName) {
+        const variants = [baseName, `${baseName}.png`, `${baseName}.jpg`, `${baseName}.jpeg`, `${baseName}.webp`];
+        let index = 0;
+        image.onload = () => { image.hidden = false; fallback.hidden = true; };
+        image.onerror = () => {
+          index += 1;
+          if (index < variants.length) image.src = variants[index];
+          else { image.hidden = true; fallback.hidden = false; }
+        };
+        image.src = variants[index];
+      }
+
+      const territoryListImage = document.getElementById('territoryListImage');
+      const territoryListFallback = document.getElementById('territoryListFallback');
+      let territoryListImageLoaded = false;
+
+      function loadTerritoryListImage() {
+        if (territoryListImageLoaded || !territoryListImage || !territoryListFallback) return;
+        territoryListImageLoaded = true;
+        loadLocalImage(territoryListImage, territoryListFallback, territoryListImage.dataset.imageBase);
+      }
+
+      const territoryMapImage = document.getElementById('territoryMapImage');
+      const territoryMapFallback = document.getElementById('territoryMapFallback');
+      let territoryMapImageLoaded = false;
+
+      function loadTerritoryMapImage() {
+        if (territoryMapImageLoaded || !territoryMapImage || !territoryMapFallback) return;
+        territoryMapImageLoaded = true;
+        loadLocalImage(territoryMapImage, territoryMapFallback, territoryMapImage.dataset.imageBase);
+      }
+
+      document.querySelectorAll('.reference-image-trigger').forEach((button) => {
+        button.addEventListener('click', () => openReferenceImage(button.dataset.referenceImage, button.dataset.referenceTitle, button));
+      });
+      document.getElementById('territoryMapImageTrigger').addEventListener('click', () => {
+        openReferenceImage('Постановка территории на карте', '', document.getElementById('territoryMapImageTrigger'));
+      });
+      modalImage.addEventListener('click', () => {
+        if (!modalImage.hidden) modal.querySelector('.modal').classList.toggle('image-zoomed');
+      });
+      document.querySelectorAll('.image-info-trigger').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openReferenceText(button.dataset.referenceTitle, button.dataset.referenceText, button);
+        });
+      });
+      closeButton.addEventListener('click', closeModal);
+      modal.addEventListener('click', (event) => { if (event.target === modal) closeModal(); });
+      document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeModal(); });
+    })();
+  </script>
+</body>
+</html>
